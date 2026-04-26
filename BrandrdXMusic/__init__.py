@@ -1,6 +1,5 @@
 from BrandrdXMusic.core.bot import Hotty
 from BrandrdXMusic.core.dir import dirr
-from BrandrdXMusic.core.git import git
 from BrandrdXMusic.core.userbot import Userbot
 from BrandrdXMusic.misc import dbb, heroku
 
@@ -8,7 +7,7 @@ from SafoneAPI import SafoneAPI
 from .logging import LOGGER
 
 dirr()
-git()
+# git() — REMOVED: ye startup par repo pull karta tha aur main.py overwrite ho jaata tha
 dbb()
 heroku()
 
