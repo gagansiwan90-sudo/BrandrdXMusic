@@ -20,5 +20,5 @@ RUN pip3 install --no-cache-dir --upgrade --requirement requirements.txt
 ENV PORT=8080
 EXPOSE 8080
 
-# Bot start karo
-CMD ["python3", "main.py"]
+# Sahi CMD — module ke through run karo
+CMD ["python3", "-m", "BrandrdXMusic"]
