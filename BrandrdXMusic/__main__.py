@@ -1,9 +1,6 @@
 import asyncio
 import importlib
-import os
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
+from aiohttp import web
 from pyrogram import idle
 from pytgcalls.exceptions import NoActiveGroupCall
 
@@ -16,32 +13,22 @@ from BrandrdXMusic.utils.database import get_banned_users, get_gbanned
 from config import BANNED_USERS
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# KEEP ALIVE (RENDER FIX — INSTANT PORT)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is running")
-
-    def log_message(self, *args):
-        pass
+# ── Health‑check web server (keeps Render happy) ──────────────────────────────
+async def health(request):
+    return web.Response(text="OK")
 
 
-def run_server():
-    port = int(os.environ.get("PORT", 8080))
-    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+async def start_web():
+    app_web = web.Application()
+    app_web.router.add_get("/", health)
+    app_web.router.add_get("/health", health)
+    runner = web.AppRunner(app_web)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8080)
+    await site.start()
+    LOGGER("BrandrdXMusic").info("Health server started on port 8080")
+# ──────────────────────────────────────────────────────────────────────────────
 
-
-# Start immediately (CRITICAL)
-threading.Thread(target=run_server, daemon=True).start()
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# MAIN BOT LOGIC
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 async def init():
     if (
@@ -54,56 +41,51 @@ async def init():
         LOGGER(__name__).error("Assistant client variables not defined, exiting...")
         exit()
 
+    # Start health server first so Render detects the open port
+    await start_web()
+
     await sudo()
 
     try:
         users = await get_gbanned()
         for user_id in users:
             BANNED_USERS.add(user_id)
-
         users = await get_banned_users()
         for user_id in users:
             BANNED_USERS.add(user_id)
-    except:
+    except Exception:
         pass
 
     await app.start()
 
-    for module in ALL_MODULES:
-        importlib.import_module("BrandrdXMusic.plugins." + module)
-
-    LOGGER("BrandrdXMusic.plugins").info("Modules Imported")
+    for all_module in ALL_MODULES:
+        importlib.import_module("BrandrdXMusic.plugins" + all_module)
+    LOGGER("BrandrdXMusic.plugins").info("Successfully Imported Modules...")
 
     await userbot.start()
     await Hotty.start()
 
     try:
-        await Hotty.stream_call(
-            "https://graph.org/file/e999c40cb700e7c684b75.mp4"
-        )
+        await Hotty.stream_call("https://graph.org/file/e999c40cb700e7c684b75.mp4")
     except NoActiveGroupCall:
         LOGGER("BrandrdXMusic").error(
-            "Turn on video chat in your log group/channel.\nStopping bot..."
+            "Please turn on the videochat of your log group/channel.\n\nStopping Bot..."
         )
         exit()
-    except:
+    except Exception:
         pass
 
     await Hotty.decorators()
 
-    LOGGER("BrandrdXMusic").info("Bot Started Successfully")
+    LOGGER("BrandrdXMusic").info("Bot started successfully!")
 
     await idle()
 
     await app.stop()
     await userbot.stop()
+    LOGGER("BrandrdXMusic").info("Stopping Brandrd Music Bot...")
 
-    LOGGER("BrandrdXMusic").info("Stopping Bot...")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ENTRY POINT
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(init())
+    
